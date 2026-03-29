@@ -1,35 +1,35 @@
 # !0fastload
 
-Native ASI plugin for GTA San Andreas 1.0 US that applies fast-load startup patches immediately on launch.
+Нативный `ASI`-плагин для `GTA San Andreas 1.0 US`, который применяет fast-load патчи сразу при запуске игры.
 
-## Contents
+## Содержимое
 
-- `!0fastload.asi` - release build
-- `source/main.cpp` - plugin source
-- `!0fastload.vcxproj` - Visual Studio project
-- `!0fastload.sln` - Visual Studio solution
+- `!0fastload.asi` - релизная сборка
+- `source/main.cpp` - исходный код плагина
+- `!0fastload.vcxproj` - проект Visual Studio
+- `!0fastload.sln` - solution Visual Studio
 
-## Build
+## Сборка
 
-Requirements:
-- Visual Studio 2022 with C++ toolset
-- Win32 target
+Требования:
+- Visual Studio 2022 с установленным C++ toolset
+- целевая платформа `Win32`
 
-Build command:
+Команда сборки:
 
 ```powershell
 & 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' '.\!0fastload.vcxproj' '/t:Build' '/p:Configuration=Release;Platform=Win32'
 ```
 
-Output:
+Выходной файл:
 
 ```text
 build\Release\Win32\!0fastload.asi
 ```
 
-## Notes
+## Примечания
 
-- Target game version: `GTA San Andreas 1.0 US`
-- Plugin format: `ASI`
-- Architecture: `x86 / Win32`
-- Some patches keep compatibility behavior for `sampfuncs.asi`
+- Целевая версия игры: `GTA San Andreas 1.0 US`
+- Формат плагина: `ASI`
+- Архитектура: `x86 / Win32`
+- Часть патчей сохраняет совместимость с `sampfuncs.asi`
