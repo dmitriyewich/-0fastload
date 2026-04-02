@@ -1,57 +1,57 @@
 # !0fastload
 
-`!0fastload` is a native `ASI` plugin for `GTA San Andreas 1.0 US` that applies fast startup patches as early as possible.
+`!0fastload` это нативный `ASI`-плагин для `GTA San Andreas 1.0 US`, который применяет fastload-патчи как можно раньше при запуске игры.
 
-The plugin is intended for both:
-- single-player
-- `SA-MP` startup
+Плагин рассчитан на использование:
+- в одиночной игре
+- при запуске `SA-MP`
 
-It does not depend on `SAMPFUNCS` and does not patch `samp.dll` directly.
+Он не зависит от `SAMPFUNCS` и не патчит `samp.dll` напрямую.
 
-## Features
+## Возможности
 
-- skips the standard startup/loading screen path
-- disables loading audio on startup
-- keeps fastload behavior in both single-player and `SA-MP`
-- adds a conservative `SA-MP` startup-safe patch set for focus/menu pause behavior
+- пропускает стандартный путь со стартовыми экранами и загрузочным экраном
+- отключает загрузочное аудио при старте
+- сохраняет fastload-поведение и в одиночной игре, и в `SA-MP`
+- добавляет осторожный набор `SA-MP`-совместимых патчей против focus/menu pause-залипаний на старте
 
-## Compatibility
+## Совместимость
 
-- game: `GTA San Andreas 1.0 US`
-- plugin format: `ASI`
-- architecture: `x86 / Win32`
+- игра: `GTA San Andreas 1.0 US`
+- формат плагина: `ASI`
+- архитектура: `x86 / Win32`
 
-## Installation
+## Установка
 
-Copy `!0fastload.asi` to the game root folder next to `gta_sa.exe`.
+Скопируйте `!0fastload.asi` в корневую папку игры рядом с `gta_sa.exe`.
 
-## Build
+## Сборка
 
-Requirements:
-- Visual Studio 2022 with C++ toolset
-- target platform `Win32`
+Требования:
+- Visual Studio 2022 с установленным C++ toolset
+- целевая платформа `Win32`
 
-Build command:
+Команда сборки:
 
 ```powershell
 & 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' '.\!0fastload.vcxproj' '/t:Build' '/p:Configuration=Release;Platform=Win32'
 ```
 
-Output file:
+Выходной файл:
 
 ```text
 build\Release\Win32\!0fastload.asi
 ```
 
-## Repository Layout
+## Структура Репозитория
 
-- `source/main.cpp` - plugin source
-- `!0fastload.vcxproj` - Visual Studio project
-- `!0fastload.sln` - Visual Studio solution
-- `publish/` - publication-ready files
+- `source/main.cpp` - исходный код плагина
+- `!0fastload.vcxproj` - проект Visual Studio
+- `!0fastload.sln` - solution Visual Studio
+- `publish/` - готовые файлы для публикации
 
-## Notes
+## Примечания
 
-- `SA-MP` detection is based on `samp.dll` presence or standard launch arguments.
-- The plugin focuses on startup fastload behavior only.
-- Autosave/autoload logic is intentionally not included.
+- `SA-MP` определяется по наличию `samp.dll` или стандартных аргументов запуска.
+- Плагин отвечает только за fastload-логику старта.
+- Логика автосохранения и автозагрузки специально не включена.
