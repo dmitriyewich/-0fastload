@@ -21,6 +21,11 @@ constexpr std::uintptr_t kForceGameStateWriteAddress = 0x00748AA8;
 constexpr std::uintptr_t kDisablePreCopyrightCallAddress = 0x00748C23;
 constexpr std::uintptr_t kDisableCopyrightJumpAddress = 0x00748C2B;
 
+constexpr std::uintptr_t kForceForegroundStateWriteValueAddress = 0x0074805A;
+constexpr std::uintptr_t kAllowFrontendIdleWhenMinimizedAddress = 0x00748CBD;
+constexpr std::uintptr_t kDisableMenuOnFocusLossValueAddress = 0x0053BC78;
+constexpr std::uintptr_t kKeepGameUnpausedWhenPausedValueAddress = 0x00561AF6;
+
 constexpr std::uintptr_t kSkipFadeRenderAddress = 0x00590AE4;
 constexpr std::uintptr_t kSkipFadeRenderTargetAddress = 0x00590C9E;
 constexpr std::uintptr_t kIncreaseDisplayedSplashCallAddress = 0x00590ADE;
@@ -32,8 +37,12 @@ constexpr DWORD kDisplayedSplashIndexAddress = 0x008D093C;
 constexpr DWORD kFirstLoadscreenSplashAddress = 0x00BAB31E;
 constexpr DWORD kTimeSinceLastSplashAddress = 0x00BAB340;
 
-constexpr bool kSkipLoadingScreen = true;
 float g_loadscreenTime = 1.01f;
+
+enum class RuntimeMode {
+    SinglePlayer,
+    Samp,
+};
 
 #pragma pack(push, 1)
 struct RelativeBranchPatch {
@@ -42,9 +51,11 @@ struct RelativeBranchPatch {
 };
 #pragma pack(pop)
 
-void DebugLog(const char* message) {
-    OutputDebugStringA(message);
-}
+#if defined(_DEBUG)
+#define FASTLOAD_DEBUG_LOG(message) OutputDebugStringA(message)
+#else
+#define FASTLOAD_DEBUG_LOG(message) do { } while (false)
+#endif
 
 bool WriteBytes(std::uintptr_t address, const void* data, std::size_t size) {
     DWORD oldProtect = 0;
@@ -109,6 +120,67 @@ bool ReadGameState(DWORD& value) {
     }
 }
 
+bool IsBoundaryCharacter(char value) {
+    return value == '\0'
+        || value == ' '
+        || value == '\t'
+        || value == '\r'
+        || value == '\n'
+        || value == '"'
+        || value == '\'';
+}
+
+char ToLowerAscii(char value) {
+    if (value >= 'A' && value <= 'Z') {
+        return static_cast<char>(value - 'A' + 'a');
+    }
+    return value;
+}
+
+bool EqualsIgnoreCaseAscii(char lhs, char rhs) {
+    return ToLowerAscii(lhs) == ToLowerAscii(rhs);
+}
+
+bool CommandLineHasToken(const char* commandLine, const char* token) {
+    if (commandLine == nullptr || token == nullptr || *token == '\0') {
+        return false;
+    }
+
+    const std::size_t tokenLength = std::strlen(token);
+    for (const char* current = commandLine; *current != '\0'; ++current) {
+        if (current != commandLine && !IsBoundaryCharacter(*(current - 1))) {
+            continue;
+        }
+
+        std::size_t matched = 0;
+        while (matched < tokenLength
+            && current[matched] != '\0'
+            && EqualsIgnoreCaseAscii(current[matched], token[matched])) {
+            ++matched;
+        }
+
+        if (matched == tokenLength && IsBoundaryCharacter(current[tokenLength])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool HasSampLaunchArguments() {
+    const char* const commandLine = GetCommandLineA();
+    return CommandLineHasToken(commandLine, "-c")
+        || CommandLineHasToken(commandLine, "-h")
+        || CommandLineHasToken(commandLine, "-p");
+}
+
+RuntimeMode DetectRuntimeMode() {
+    if (GetModuleHandleA("samp.dll") != nullptr || HasSampLaunchArguments()) {
+        return RuntimeMode::Samp;
+    }
+    return RuntimeMode::SinglePlayer;
+}
+
 void __cdecl IncreaseDisplayedSplash() {
     __try {
         auto* currentSplash = reinterpret_cast<volatile int*>(kDisplayedSplashIndexAddress);
@@ -134,9 +206,12 @@ void __cdecl SimulateCopyrightScreen() {
     }
 }
 
-bool ApplyLuaPatches(bool hasSampFuncs) {
+bool ApplySinglePlayerPatches() {
     static constexpr std::uint8_t kForceGameStateWritePatch[] = {
         0xC7, 0x05, 0xC0, 0xD4, 0xC8, 0x00, 0x05, 0x00, 0x00, 0x00,
+    };
+    static constexpr std::uint8_t kDisableLoadingScreenRenderPatch[] = {
+        0xC3, 0x90, 0x90, 0x90, 0x90,
     };
 
     bool ok = true;
@@ -146,18 +221,11 @@ bool ApplyLuaPatches(bool hasSampFuncs) {
     ok &= Nop(kForceGameStateWriteAddress, 6);
     ok &= WriteBytes(kForceGameStateWriteAddress, kForceGameStateWritePatch, sizeof(kForceGameStateWritePatch));
     ok &= Nop(kDisablePreCopyrightCallAddress, 5);
-
-    if (hasSampFuncs) {
-        ok &= Nop(kCopyrightCallAddress, 5);
-    }
-
     ok &= Nop(kDisableCopyrightJumpAddress, 5);
-
-    return ok;
-}
-
-bool ApplyFastLoadPatches(bool hasSampFuncs) {
-    bool ok = true;
+    ok &= WriteRelativeBranch(
+        kCopyrightCallAddress,
+        reinterpret_cast<std::uintptr_t>(&SimulateCopyrightScreen),
+        0xE8);
 
     ok &= WriteRelativeBranch(kSkipFadeRenderAddress, kSkipFadeRenderTargetAddress, 0xE9);
     ok &= WriteRelativeBranch(
@@ -166,25 +234,22 @@ bool ApplyFastLoadPatches(bool hasSampFuncs) {
         0xE8);
     ok &= Nop(kIncreaseDisplayedSplashCallAddress + 5, 1);
     ok &= WritePointerOperand(kLoadscreenTimeOperandAddress, &g_loadscreenTime);
+    ok &= Nop(kDisableLoadingBarRenderAddress, 5);
+    ok &= WriteBytes(
+        kDisableLoadingScreenRenderAddress,
+        kDisableLoadingScreenRenderPatch,
+        sizeof(kDisableLoadingScreenRenderPatch));
 
-    if (!hasSampFuncs) {
-        ok &= WriteRelativeBranch(
-            kCopyrightCallAddress,
-            reinterpret_cast<std::uintptr_t>(&SimulateCopyrightScreen),
-            0xE8);
-    }
+    return ok;
+}
 
-    if (kSkipLoadingScreen) {
-        static constexpr std::uint8_t kDisableLoadingScreenRenderPatch[] = {
-            0xC3, 0x90, 0x90, 0x90, 0x90,
-        };
+bool ApplySampPatches() {
+    bool ok = ApplySinglePlayerPatches();
 
-        ok &= Nop(kDisableLoadingBarRenderAddress, 5);
-        ok &= WriteBytes(
-            kDisableLoadingScreenRenderAddress,
-            kDisableLoadingScreenRenderPatch,
-            sizeof(kDisableLoadingScreenRenderPatch));
-    }
+    ok &= WriteValue<std::uint8_t>(kForceForegroundStateWriteValueAddress, static_cast<std::uint8_t>(1));
+    ok &= WriteValue<std::uint8_t>(kDisableMenuOnFocusLossValueAddress, static_cast<std::uint8_t>(0));
+    ok &= WriteValue<std::uint8_t>(kKeepGameUnpausedWhenPausedValueAddress, static_cast<std::uint8_t>(0));
+    ok &= Nop(kAllowFrontendIdleWhenMinimizedAddress, 2);
 
     return ok;
 }
@@ -192,17 +257,23 @@ bool ApplyFastLoadPatches(bool hasSampFuncs) {
 DWORD WINAPI InitializePluginThread(void*) {
     DWORD gameState = 0;
     if (!ReadGameState(gameState) || gameState >= 9) {
-        DebugLog("[!0fastload] Startup patch skipped.\n");
+        FASTLOAD_DEBUG_LOG("[!0fastload] Startup patch skipped.\n");
         return 0;
     }
 
-    const bool hasSampFuncs = GetModuleHandleA("sampfuncs.asi") != nullptr;
-    const bool luaPatchesApplied = ApplyLuaPatches(hasSampFuncs);
-    const bool fastLoadPatchesApplied = ApplyFastLoadPatches(hasSampFuncs);
+    const RuntimeMode runtimeMode = DetectRuntimeMode();
 
-    DebugLog((luaPatchesApplied && fastLoadPatchesApplied)
-        ? "[!0fastload] Fast-load patches applied.\n"
-        : "[!0fastload] Fast-load patches applied with errors.\n");
+    const bool patchesApplied = (runtimeMode == RuntimeMode::Samp)
+        ? ApplySampPatches()
+        : ApplySinglePlayerPatches();
+
+    if (patchesApplied) {
+        FASTLOAD_DEBUG_LOG((runtimeMode == RuntimeMode::Samp)
+            ? "[!0fastload] Applied SA-MP-safe startup patches.\n"
+            : "[!0fastload] Applied singleplayer fast-load patches.\n");
+    } else {
+        FASTLOAD_DEBUG_LOG("[!0fastload] Startup patches applied with errors.\n");
+    }
 
     return 0;
 }
