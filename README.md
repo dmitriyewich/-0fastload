@@ -48,7 +48,6 @@ build\Release\Win32\!0fastload.asi
 - `source/main.cpp` - исходный код плагина
 - `!0fastload.vcxproj` - проект Visual Studio
 - `!0fastload.sln` - solution Visual Studio
-- `publish/` - готовые файлы для публикации
 
 ## Примечания
 
