@@ -29,6 +29,11 @@ constexpr std::uintptr_t kKeepGameUnpausedWhenPausedValueAddress = 0x00561AF6;
 constexpr std::uintptr_t kSkipFadeRenderAddress = 0x00590AE4;
 constexpr std::uintptr_t kSkipFadeRenderTargetAddress = 0x00590C9E;
 constexpr std::uintptr_t kIncreaseDisplayedSplashCallAddress = 0x00590ADE;
+constexpr std::uintptr_t kPrevDisplayedSplashOperandAddress1 = 0x00590044;
+constexpr std::uintptr_t kPrevDisplayedSplashOperandAddress2 = 0x0059059D;
+constexpr std::uintptr_t kPrevDisplayedSplashOperandAddress3 = 0x00590B23;
+constexpr std::uintptr_t kPrevDisplayedSplashOperandAddress4 = 0x00590BF7;
+constexpr std::uintptr_t kPrevDisplayedSplashOperandAddress5 = 0x00590C6A;
 constexpr std::uintptr_t kDisableLoadingBarRenderAddress = 0x005905B4;
 constexpr std::uintptr_t kDisableLoadingScreenRenderAddress = 0x00590D9F;
 constexpr std::uintptr_t kLoadscreenTimeOperandAddress = 0x00590DA6;
@@ -37,7 +42,8 @@ constexpr DWORD kDisplayedSplashIndexAddress = 0x008D093C;
 constexpr DWORD kFirstLoadscreenSplashAddress = 0x00BAB31E;
 constexpr DWORD kTimeSinceLastSplashAddress = 0x00BAB340;
 
-float g_loadscreenTime = 1.01f;
+float g_loadscreenTime = 0.1f;
+int g_previousDisplayedSplash = 1;
 
 enum class RuntimeMode {
     SinglePlayer,
@@ -184,7 +190,11 @@ RuntimeMode DetectRuntimeMode() {
 void __cdecl IncreaseDisplayedSplash() {
     __try {
         auto* currentSplash = reinterpret_cast<volatile int*>(kDisplayedSplashIndexAddress);
-        int nextSplash = *currentSplash + 1;
+        int nextSplash = *currentSplash;
+        // Mirror imfast's stored "previous" splash index so the engine's fade code
+        // can keep using a stable source even when the splash sequence loops.
+        g_previousDisplayedSplash = nextSplash + 1;
+        ++nextSplash;
         if (nextSplash >= 7) {
             nextSplash = 1;
         }
@@ -233,6 +243,11 @@ bool ApplySinglePlayerPatches() {
         reinterpret_cast<std::uintptr_t>(&IncreaseDisplayedSplash),
         0xE8);
     ok &= Nop(kIncreaseDisplayedSplashCallAddress + 5, 1);
+    ok &= WritePointerOperand(kPrevDisplayedSplashOperandAddress1, &g_previousDisplayedSplash);
+    ok &= WritePointerOperand(kPrevDisplayedSplashOperandAddress2, &g_previousDisplayedSplash);
+    ok &= WritePointerOperand(kPrevDisplayedSplashOperandAddress3, &g_previousDisplayedSplash);
+    ok &= WritePointerOperand(kPrevDisplayedSplashOperandAddress4, &g_previousDisplayedSplash);
+    ok &= WritePointerOperand(kPrevDisplayedSplashOperandAddress5, &g_previousDisplayedSplash);
     ok &= WritePointerOperand(kLoadscreenTimeOperandAddress, &g_loadscreenTime);
     ok &= Nop(kDisableLoadingBarRenderAddress, 5);
     ok &= WriteBytes(
@@ -254,11 +269,11 @@ bool ApplySampPatches() {
     return ok;
 }
 
-DWORD WINAPI InitializePluginThread(void*) {
+void InitializePlugin() {
     DWORD gameState = 0;
     if (!ReadGameState(gameState) || gameState >= 9) {
         FASTLOAD_DEBUG_LOG("[!0fastload] Startup patch skipped.\n");
-        return 0;
+        return;
     }
 
     const RuntimeMode runtimeMode = DetectRuntimeMode();
@@ -274,8 +289,6 @@ DWORD WINAPI InitializePluginThread(void*) {
     } else {
         FASTLOAD_DEBUG_LOG("[!0fastload] Startup patches applied with errors.\n");
     }
-
-    return 0;
 }
 
 }  // namespace
@@ -283,11 +296,7 @@ DWORD WINAPI InitializePluginThread(void*) {
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
     if (reason == DLL_PROCESS_ATTACH) {
         DisableThreadLibraryCalls(module);
-
-        HANDLE thread = CreateThread(nullptr, 0, &InitializePluginThread, nullptr, 0, nullptr);
-        if (thread != nullptr) {
-            CloseHandle(thread);
-        }
+        InitializePlugin();
     }
 
     return TRUE;
