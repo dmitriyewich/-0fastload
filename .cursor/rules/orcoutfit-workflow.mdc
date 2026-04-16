@@ -1,0 +1,12 @@
+---
+description: !0fastload mandatory workflow and git/doc rules
+alwaysApply: true
+---
+
+# OrcOutFit Workflow Rules
+
+- Always update `.claude/work.md` after each notable code change, fix, build, or behavior change before final user reply.
+- Never run `git push` unless the user explicitly asks for it.
+- After substantial edits, run a verification build for `Release|Win32`.
+- Keep runtime logic and docs in sync: update `context.md`, `README.md`, `README.txt` when user asks to finalize.
+- Never auto-copy or move `.asi` to game folders; the only valid artifact location is `build\Release\!0fastload.asi`.
