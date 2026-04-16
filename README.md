@@ -61,7 +61,8 @@ build\Release\!0fastload.asi
 | `source/!0fastload.rc` | `VERSIONINFO` для уменьшения ложных срабатываний AV |
 | `!0fastload.vcxproj` | проект Visual Studio |
 | `!0fastload.sln` | solution |
-| `!0fastload.lua` | legacy MoonLoader-скрипт **отключён** (патчинг только через ASI) |
+| `!0fastload.lua` | legacy MoonLoader-скрипт в корне **отключён** (патчинг только через ASI) |
+| `lua/!0fastload.lua` | копия для MoonLoader из каталога `moonloader` (при необходимости) |
 | `reference/` | референсы (fastloader, imfast, portablegta, gtasa_crashfix и др.) |
 | `context.md` | контекст для разработки |
 | `.claude/work.md` | рабочий журнал изменений |

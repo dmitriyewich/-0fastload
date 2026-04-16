@@ -18,3 +18,4 @@
 - Cloned reference repo `Whitetigerswt/gtasa_crashfix` into `reference\gtasa_crashfix` via `git clone` (`gh` was not available in PATH).
 - Implemented fastloader-style **ShowRaster** hook at `0x619440`: verify `E9`, rewrite rel32 to `ShowRaster_Prox` (naked x86 stub), skip raster redraw when `gGameState` low byte `!= 9` after first draw (`g_showRasterDidDraw`). Wired into `ApplySinglePlayerPatches` (covers SA:MP path via `ApplySampPatches`). Rebuilt `Release|x86` successfully.
 - Removed **ShowRaster** hook (`0x619440`) from `source/main.cpp` per user request; verified `Release|x86` rebuild.
+- Initialized git repo, added `.gitignore`, merged `origin/main`, resolved conflicts favoring local tree; removed nested `reference/gtasa_crashfix/.git` for single-repo layout. Updated `README.md` and `context.md` for GitHub.
