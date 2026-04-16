@@ -55,17 +55,15 @@ build\Release\!0fastload.asi
 
 ## Структура репозитория
 
+Репозиторий на GitHub хранит только основной код и профиль сборки:
+
 | Путь | Назначение |
 |------|------------|
-| `source/main.cpp` | логика патчей и `DllMain` |
-| `source/!0fastload.rc` | `VERSIONINFO` для уменьшения ложных срабатываний AV |
+| `source/main.cpp` | логика fastload-патчей и `DllMain` |
+| `source/!0fastload.rc` | `VERSIONINFO` ресурсы PE |
 | `!0fastload.vcxproj` | проект Visual Studio |
-| `!0fastload.sln` | solution |
-| `!0fastload.lua` | legacy MoonLoader-скрипт в корне **отключён** (патчинг только через ASI) |
-| `lua/!0fastload.lua` | копия для MoonLoader из каталога `moonloader` (при необходимости) |
-| `reference/` | референсы (fastloader, imfast, portablegta, gtasa_crashfix и др.) |
-| `context.md` | контекст для разработки |
-| `.claude/work.md` | рабочий журнал изменений |
+| `!0fastload.sln` | solution Visual Studio |
+| `README.md` | текущая документация |
 
 ## Примечания
 
@@ -73,4 +71,4 @@ build\Release\!0fastload.asi
 - Плагин отвечает только за **fastload** на старте; автосохранение и автозагрузка сейвов **не** реализованы.
 - Эвристики антивирусов на runtime-патчинг возможны; для публичных релизов полезны **подпись** бинарника и репутация/whitelisting.
 
-Репозиторий на GitHub: [dmitriyewich/-0fastload](https://github.com/dmitriyewich/-0fastload).
+Репозиторий: [dmitriyewich/-0fastload](https://github.com/dmitriyewich/-0fastload).
