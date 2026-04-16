@@ -25,7 +25,8 @@
 - Версия PE: `C:\Games\CODEX\!0fastload\source\!0fastload.rc`
 - Проект: `C:\Games\CODEX\!0fastload\!0fastload.vcxproj`
 - Solution: `C:\Games\CODEX\!0fastload\!0fastload.sln`
-- Legacy Lua (заглушка): `C:\Games\CODEX\!0fastload\!0fastload.lua`
+- Legacy Lua (заглушка в корне): `C:\Games\CODEX\!0fastload\!0fastload.lua`
+- MoonLoader-путь (из merge с GitHub): `C:\Games\CODEX\!0fastload\lua\!0fastload.lua`
 - Журнал: `C:\Games\CODEX\!0fastload\.claude\work.md`
 - Контекст: `C:\Games\CODEX\!0fastload\context.md`
 - Референсы: `C:\Games\CODEX\!0fastload\reference\`
