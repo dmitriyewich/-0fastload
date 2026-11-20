@@ -92,6 +92,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp" />
+    <ClInclude Include="source\launch_mode.h" />
+    <ClInclude Include="source\patching.h" />
+    <ClInclude Include="source\single_player.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="source\!0fastload.rc" />
