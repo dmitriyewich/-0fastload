@@ -4,7 +4,7 @@ namespace fastload_patch {
 
 constexpr std::uintptr_t kImageBase = 0x00400000;
 constexpr std::size_t kPageSize = 0x1000;
-constexpr std::size_t kMaxPatches = 6;
+constexpr std::size_t kMaxPatches = 8;
 
 struct Patch {
     std::uintptr_t address;

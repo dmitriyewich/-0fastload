@@ -47,6 +47,7 @@ using StartupFn = int (__cdecl*)();
 using InitScreenFn = void (__cdecl*)(int, int);
 using FadeFn = void (__cdecl*)();
 using AudioFn = void (__thiscall*)(void*);
+using DrawSpriteFn = void (__thiscall*)(void*, const void*, const void*);
 
 StartupFn g_originalStartup;
 InitScreenFn g_originalInitScreen;
@@ -54,10 +55,12 @@ FadeFn g_originalFadeIn;
 FadeFn g_originalFadeOut;
 AudioFn g_originalStartTune;
 AudioFn g_originalPostLoading;
+DrawSpriteFn g_originalDrawSplash;
 
 bool g_commonInstalled;
 bool g_sampLaunch;
 bool g_coldStartup;
+bool g_skippedClientScreen;
 bool g_portableCalled;
 unsigned g_sampApplied;
 
@@ -128,7 +131,14 @@ void ApplySampPatches() {
     Patch pending[kSampPatchCount]{};
     std::size_t count = 0;
     unsigned mask = 0;
+    // Arizona owns both pause handlers and can change their operands during world init.
+    constexpr unsigned char clientPause[] = {0xC3, 0x05, 0x49, 0xCB, 0xB7, 0};
+    constexpr std::uintptr_t pause = 0x561AF0;
+    const bool clientOwnsPause = ImageMemory(pause, 8, kImageBase, Access::Code)
+        && Equal(pause, clientPause, sizeof(clientPause))
+        && GameValue<unsigned char>(pause + 6) <= 1 && GameValue<unsigned char>(pause + 7) == 0xC3;
     for (std::size_t i = 0; i < kSampPatchCount; ++i) {
+        if (clientOwnsPause && (kSampPatches[i].address == pause || kSampPatches[i].address == 0x53BC72)) continue;
         if (fastload_patch::Matches(kSampPatches[i], true)) continue;
         pending[count++] = kSampPatches[i];
         mask |= 1u << i;
@@ -191,7 +201,22 @@ int __cdecl BeforeStartup() {
 }
 
 void __cdecl InitScreen(int start, int dontFade) {
+    g_skippedClientScreen = g_coldStartup && g_originalDrawSplash && !GameValue<unsigned char>(kLoadingScreenActive);
     if (!g_coldStartup) g_originalInitScreen(start, dontFade);
+    if (!g_skippedClientScreen) return;
+
+    // Ask the client to finish its own overlay. Its fade callbacks still run in RenderSplash.
+    const HMODULE client = GetModuleHandleW(L"vorbisFile.dll");
+    const auto hide = client ? reinterpret_cast<FadeFn>(
+        reinterpret_cast<std::uintptr_t>(GetProcAddress(client, "HideSplash"))) : nullptr;
+    if (hide) hide();
+}
+
+void __fastcall DrawSplash(void* sprite, void*, const void* rect, const void* colour) {
+    // The client can render again after state 9, with no sprite for the skipped loading screen.
+    if (g_skippedClientScreen && !GameValue<unsigned char>(kLoadingScreenActive)) return;
+    g_skippedClientScreen = false;
+    g_originalDrawSplash(sprite, rect, colour);
 }
 
 void __cdecl FadeIn() {
@@ -222,14 +247,32 @@ void __fastcall PostLoading(void* audio, void*) {
 }
 
 bool InstallCommonPatches() {
-    Patch patches[6]{};
-    return Call(patches[0], 0x748995, kSetDirMyDocuments, reinterpret_cast<std::uintptr_t>(&BeforeStartup), g_originalStartup)
-        && Call(patches[1], 0x748C23, 0x5902B0, reinterpret_cast<std::uintptr_t>(&InitScreen), g_originalInitScreen)
-        && Call(patches[2], 0x748C2B, 0x590860, reinterpret_cast<std::uintptr_t>(&FadeIn), g_originalFadeIn)
-        && Call(patches[3], 0x748C9A, 0x590990, reinterpret_cast<std::uintptr_t>(&FadeOut), g_originalFadeOut)
-        && Call(patches[4], 0x748CF6, 0x507410, reinterpret_cast<std::uintptr_t>(&StartTune), g_originalStartTune)
-        && Call(patches[5], kCallPostLoading, 0x5078F0, reinterpret_cast<std::uintptr_t>(&PostLoading), g_originalPostLoading)
-        && Apply(patches, 6);
+    Patch patches[8]{};
+    if (!Call(patches[0], 0x748995, kSetDirMyDocuments, reinterpret_cast<std::uintptr_t>(&BeforeStartup), g_originalStartup)
+        || !Call(patches[1], 0x748C23, 0x5902B0, reinterpret_cast<std::uintptr_t>(&InitScreen), g_originalInitScreen)
+        || !Call(patches[2], 0x748C2B, 0x590860, reinterpret_cast<std::uintptr_t>(&FadeIn), g_originalFadeIn)
+        || !Call(patches[3], 0x748CF6, 0x507410, reinterpret_cast<std::uintptr_t>(&StartTune), g_originalStartTune)
+        || !Call(patches[4], kCallPostLoading, 0x5078F0, reinterpret_cast<std::uintptr_t>(&PostLoading), g_originalPostLoading))
+        return false;
+
+    constexpr std::uintptr_t fadeOutSite = 0x748C9A;
+    if (Call(patches[5], fadeOutSite, 0x590990, reinterpret_cast<std::uintptr_t>(&FadeOut), g_originalFadeOut))
+        return Apply(patches, 6);
+
+    // Arizona can remove this CALL before ASI loading. Leave the client's bytes in place.
+    constexpr unsigned char disabledFadeOut[] = {0x90, 0x90, 0x90, 0x90, 0x90};
+    if (!g_sampLaunch || !ImageMemory(fadeOutSite, sizeof(disabledFadeOut), kImageBase, Access::Code)
+        || !Equal(fadeOutSite, disabledFadeOut, sizeof(disabledFadeOut))) return false;
+
+    // Cover both the current and previous sprite in RenderSplash. The rest of the renderer
+    // drives Arizona's overlay lifetime even when the skipped screen has no textures.
+    constexpr std::uintptr_t drawSites[] = {0x58FFFB, 0x59001B, 0x590059};
+    std::size_t count = 5;
+    for (const auto site : drawSites) {
+        if (!Call(patches[count++], site, 0x728350, reinterpret_cast<std::uintptr_t>(&DrawSplash), g_originalDrawSplash))
+            return false;
+    }
+    return Apply(patches, count);
 }
 
 void InstallSinglePlayerPatches() {
