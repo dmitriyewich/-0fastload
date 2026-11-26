@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
   release:
     types: [published]
 
@@ -32,3 +33,27 @@ jobs:
           name: fastload-release-win32
           path: build/Release/!0fastload.asi
           if-no-files-found: error
+          retention-days: 30
+
+  publish_release:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download workflow artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: fastload-release-win32
+          path: release
+
+      - name: Upload release asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mv -- 'release/!0fastload.asi' release/0fastload.asi
+          gh release upload --repo "$GITHUB_REPOSITORY" --clobber -- "$RELEASE_TAG" release/0fastload.asi

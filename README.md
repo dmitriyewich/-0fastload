@@ -30,11 +30,13 @@
 
 ## Установка
 
-При публикации релиза GitHub Actions собирает плагин в `Release|Win32` из коммита тега.
+При публикации релиза GitHub Actions собирает плагин в `Release|Win32` из коммита тега и добавляет `0fastload.asi` в **Assets**.
 
-1. Соберите `build\Release\!0fastload.asi` из исходников или скачайте и распакуйте `fastload-release-win32` из раздела **Artifacts** успешной сборки тега релиза или ветки `main`. [Сборки в GitHub Actions](https://github.com/dmitriyewich/-0fastload/actions/workflows/build-release-win32.yml)
+1. Скачайте `0fastload.asi` из **Assets** и переименуйте файл в `!0fastload.asi`. [Релизы](https://github.com/dmitriyewich/-0fastload/releases)
 2. Положите `!0fastload.asi` рядом с `gta_sa.exe` или в папку, которую сканирует ASI-loader.
 3. При обновлении с [v1.4](https://github.com/dmitriyewich/-0fastload/releases/tag/v1.4) уберите старый `0fastload.asi` из папок, которые сканирует ASI-loader.
+
+Также можно собрать `build\Release\!0fastload.asi` из исходников или скачать и распаковать `fastload-release-win32` из **Artifacts** нужной сборки. [Сборки в GitHub Actions](https://github.com/dmitriyewich/-0fastload/actions/workflows/build-release-win32.yml)
 
 ## Сборка
 
@@ -73,7 +75,7 @@ build\Release\!0fastload.asi
 | `source/!0fastload.rc` | `VERSIONINFO` ресурсы PE |
 | `!0fastload.vcxproj` | проект Visual Studio |
 | `!0fastload.sln` | solution Visual Studio |
-| `.github/workflows/build-release-win32.yml` | сборка `Release\|Win32` в GitHub Actions |
+| `.github/workflows/build-release-win32.yml` | сборка `Release\|Win32` и загрузка ASI в Assets |
 | `README.md` | текущая документация |
 
 ## Примечания
