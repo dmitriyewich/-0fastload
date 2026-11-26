@@ -17,11 +17,9 @@ BEGIN
     BEGIN
         BLOCK "040904B0"
         BEGIN
-            VALUE "CompanyName", "CODEX\0"
             VALUE "FileDescription", "!0fastload ASI plugin for GTA San Andreas\0"
             VALUE "FileVersion", "1.0.0.0\0"
             VALUE "InternalName", "!0fastload.asi\0"
-            VALUE "LegalCopyright", "Copyright (c) CODEX\0"
             VALUE "OriginalFilename", "!0fastload.asi\0"
             VALUE "ProductName", "!0fastload\0"
             VALUE "ProductVersion", "1.0.0.0\0"
